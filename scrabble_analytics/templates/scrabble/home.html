@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {{ title }} {{ block.supper }}
+{% endblock title %}
+
+{% block content_search %}
+<div>
+    <form method='POST' action='.'> {% csrf_token %}
+        <div class="float seventy" > 
+                {{ form }}
+        </div>
+        <div class="float thirty">	
+            <input type='submit' class='btn btn-block ' value='Search'>
+        </div>	
+    </form> 
+</div>
+
+{% endblock %}
+
+
+{% block content_result %}
+    {% if has_result %}
+        <div>
+            <p>The list of letters is: {{list_letters}}. There are {{free_letter}} blank letter(s)</p>
+            {{table | safe}}
+            
+        </div>
+    {% else %}
+        <div></div> 
+    {% endif %}
+{% endblock %}
+
+
+
