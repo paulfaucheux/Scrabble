@@ -84,4 +84,4 @@ def get_list_of_words(letters, free_letter):
 
     print('{}--DONE--{}--{}'.format(len(array_words),len(array_missing),len(df)))
 
-    return df.sort_values(by='score',ascending=False)[['words','missing']].groupby(by='missing', axis=0, as_index=False).agg(lambda x: ', '.join(x))
+    return df

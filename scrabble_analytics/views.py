@@ -27,6 +27,6 @@ class HomeView(View):
                 "has_result":True,
                 "list_letters": letters,
                 "free_letter" : free_letter,
-                "table" : df.head().to_html(index = False, classes="table table-striped")
+                "table" : df.sort_values(by='score',ascending=False)[['words','missing']].groupby(by='missing', axis=0, as_index=False).agg(lambda x: ', '.join(x)).to_html(index = False, classes="table table-striped")
             }
         return render(request, "scrabble/home.html", context)
