@@ -1,5 +1,6 @@
-from scrabble_analytics.models import Words
 from scrabble_analytics.toolbox import get_score
+from scrabble_analytics.models import WordsObject
+
 import numpy as np
 import pandas as pd
 
@@ -55,7 +56,8 @@ def get_list_of_words(letters, free_letter):
     array_missing = []
     print(letters)
     print(free_letter)
-    for w in Words.objects.all():
+    all_entries = [] #WordsObject.objects.all()
+    for w in all_entries:
         w = w.Word_name[:-1]
         if len(w) <= 10:
             if set(w).issubset(letters):
@@ -82,4 +84,4 @@ def get_list_of_words(letters, free_letter):
 
     print('{}--DONE--{}--{}'.format(len(array_words),len(array_missing),len(df)))
 
-    return df.sort_values(by='score',ascending=False)
+    return df.sort_values(by='score',ascending=False)[['words','missing']].groupby(by='missing', axis=0, as_index=False).agg(lambda x: ', '.join(x))

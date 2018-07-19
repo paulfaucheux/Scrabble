@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.views import View
 from scrabble_analytics.forms import SubmitLettersForm
+from scrabble_analytics.models import WordsObject
 from scrabble_analytics.utils import get_clean_list_letters, get_list_of_words
 
 class HomeView(View):

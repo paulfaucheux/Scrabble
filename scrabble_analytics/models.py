@@ -2,10 +2,10 @@ from django.db import models
 from scrabble_analytics.toolbox import get_score
 
 # Create your models here.
-class Words(models.Model):
+class WordsObject(models.Model):
     Word_name = models.CharField(max_length = 20)
-    Length   = models.IntegerField()
-    Score    = models.IntegerField()
+    Length = models.IntegerField()
+    Score = models.IntegerField()
     
     def __str__(self):
         return str(self.Word_name) + ' Length: ' + str(self.Length) + ' Score: ' + str(self.Score)
@@ -18,4 +18,4 @@ class Words(models.Model):
             self.Length = len(self.Word_name)
         if self.Score == None:
             self.Score = get_score(self.Word_name)
-        super(Words, self).save(*args, **kwargs)
+        super(WordsObject, self).save(*args, **kwargs)
