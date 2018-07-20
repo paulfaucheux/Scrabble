@@ -2,7 +2,7 @@ from django.db import models
 from scrabble_analytics.toolbox import get_score
 
 # Create your models here.
-class WordsObject(models.Model):
+class Words(models.Model):
     Word_name = models.CharField(max_length = 20)
     Length = models.IntegerField()
     Score = models.IntegerField()
@@ -18,4 +18,21 @@ class WordsObject(models.Model):
             self.Length = len(self.Word_name)
         if self.Score == None:
             self.Score = get_score(self.Word_name)
-        super(WordsObject, self).save(*args, **kwargs)
+        super(Words, self).save(*args, **kwargs)
+
+class SavedSearchParameters(models.Model):
+    Letters_list = models.CharField(max_length = 20)
+    Created_date = models.DateTimeField(auto_now_add=True)
+
+    def delete_everything(self):
+        SavedSearchParameters.objects.all().delete()
+
+class SavedSearchResults(models.Model):
+    Word_name = models.CharField(max_length = 20)
+    Missing = models.CharField(max_length = 20)
+    Length = models.IntegerField()
+    Score = models.IntegerField()
+    Pksearch = models.ForeignKey(SavedSearchParameters, on_delete=models.CASCADE)
+
+    def delete_everything(self):
+        SavedSearchResults.objects.all().delete()

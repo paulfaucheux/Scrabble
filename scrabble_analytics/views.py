@@ -1,8 +1,7 @@
 from django.shortcuts import render
 from django.views import View
 from scrabble_analytics.forms import SubmitLettersForm
-from scrabble_analytics.models import WordsObject
-from scrabble_analytics.utils import get_clean_list_letters, get_list_of_words
+from scrabble_analytics.utils import get_clean_list_letters, get_additional_param, get_list_of_words, get_search_result
 
 class HomeView(View):
     def get(self, request, *args, **kwargs):
@@ -17,10 +16,17 @@ class HomeView(View):
     
         the_form = SubmitLettersForm(request.POST)
         if the_form.is_valid():
-            list_letters = the_form.cleaned_data['list_letters']
-
+            query = the_form.cleaned_data['list_letters']
+            queries = query.split('&')
+            list_letters = queries[0].strip()
             letters, free_letter = get_clean_list_letters(list_letters.upper())
-            df = get_list_of_words(letters, free_letter+1)
+            df = get_search_result(letters, free_letter)
+
+            if len(queries) > 1:
+                for param in queries:
+                    filter_param = param.split(':')
+                    label, value = get_additional_param(filter_param)
+                    df = df[label].str.contains(value)
 
             context = {
                 "form": the_form,
