@@ -11,14 +11,14 @@ def get_clean_list_letters(list_letters):
     return [c for c in list_letters if c.isalpha()], [c for c in list_letters].count('_') 
 
 def check_param_label(label):
-    return True if label == 'word' or label == 'missing' else False
+    return True if label == 'words' or label == 'missing' else False
 
 def check_param_value(label):
     return True if len(label) > 0 and label.isalpha() else False
 
 def get_additional_param(filter_param):
     if len(filter_param) > 1 and check_param_label(filter_param[0].strip()) and check_param_value(filter_param[1].strip()):
-        return filter_param[0].strip(), filter_param[1].strip()
+        return filter_param[0].strip(), filter_param[1].strip().upper()
     return None, None
 
 def get_dict_list_letters(list_letters):

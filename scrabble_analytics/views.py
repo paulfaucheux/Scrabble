@@ -23,10 +23,10 @@ class HomeView(View):
             df = get_search_result(letters, free_letter)
 
             if len(queries) > 1:
-                for param in queries:
+                for param in queries[1:]:
                     filter_param = param.split(':')
                     label, value = get_additional_param(filter_param)
-                    df = df[label].str.contains(value)
+                    df = df[df[label].str.contains(value)]
 
             context = {
                 "form": the_form,
