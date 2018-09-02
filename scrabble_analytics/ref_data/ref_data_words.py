@@ -6,11 +6,16 @@ f = open(filename, 'r')
 
 insert_list = []
 for word in f:
-    insert_list.append(Words(Word_name=word,
-        Length=len(word),
-        Score=get_score(word)
+    insert_list.append(Words(Word_name=word[:-1],
+        Length=len(word[:-1]),
+        Score=get_score(word[:-1])
     ))
+    
 Words.objects.bulk_create(insert_list)
 
 
 f.close()
+
+#! To execute it:
+#! python manage.py shell
+#! exec(open('myscript.py').read())

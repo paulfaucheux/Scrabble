@@ -17,8 +17,8 @@ def check_param_value(label):
     return True if len(label) > 0 and label.isalpha() else False
 
 def get_additional_param(filter_param):
-    if len(filter_param) > 1 and check_param_label(filter_param[0].strip()) and check_param_value(filter_param[1].strip()):
-        return filter_param[0].strip(), filter_param[1].strip().upper()
+    if len(filter_param) > 1 and check_param_label(filter_param[0].strip().lower()) and check_param_value(filter_param[1].strip()):
+        return filter_param[0].strip().lower(), filter_param[1].strip().upper()
     return None, None
 
 def get_dict_list_letters(list_letters):
@@ -68,27 +68,26 @@ def get_list_of_words(letters, free_letter):
     print(letters)
     all_entries = Words.objects.all()
     for w in all_entries:
-        w = w.Word_name[:-1]
-        if len(w) <= 10:
-            if set(w).issubset(letters):
-                (check, missing) = check_enough_letters(w,letters, free_letter)
-                if check:
-                    #print('{} missing {}'.format(word,missing))
-                    array_words = np.append(array_words, w)
-                    if type(missing) is np.ndarray:
-                        array_missing = np.append(array_missing, ''.join(missing))
-                    else:
-                        array_missing = np.append(array_missing, [ '' if not missing else missing])
-            elif len(list(set(w))) <= len(list(set(letters))) + free_letter:
-                #print(word)
-                (check, missing) = check_enough_letters(w,letters, free_letter)
-                if check:
-                    #print('{} missing {}'.format(word,missing))
-                    array_words = np.append(array_words, w)
-                    if type(missing) is np.ndarray:
-                        array_missing = np.append(array_missing, ''.join(missing))
-                    else:
-                        array_missing = np.append(array_missing, [ '' if not missing else missing])
+        w = w.Word_name
+        if set(w).issubset(letters):
+            (check, missing) = check_enough_letters(w,letters, free_letter)
+            if check:
+                #print('{} missing {}'.format(word,missing))
+                array_words = np.append(array_words, w)
+                if type(missing) is np.ndarray:
+                    array_missing = np.append(array_missing, ''.join(missing))
+                else:
+                    array_missing = np.append(array_missing, [ '' if not missing else missing])
+        elif len(list(set(w))) <= len(list(set(letters))) + free_letter:
+            #print(word)
+            (check, missing) = check_enough_letters(w,letters, free_letter)
+            if check:
+                #print('{} missing {}'.format(word,missing))
+                array_words = np.append(array_words, w)
+                if type(missing) is np.ndarray:
+                    array_missing = np.append(array_missing, ''.join(missing))
+                else:
+                    array_missing = np.append(array_missing, [ '' if not missing else missing])
 
     df = pd.DataFrame({'words':array_words,'missing':array_missing, 'length': [len(w) for w in array_words], 'score': [ get_score(w) for w in array_words]})
 
@@ -99,7 +98,6 @@ def get_list_of_words(letters, free_letter):
 def save_search_result(df, letters, free_letter):
     pk_search = get_pk_search(letters, free_letter)
     obj_pk_search = SavedSearchParameters.objects.create(Letters_list = pk_search)
-    print(df.columns)
     insert_entry_list = []
     for i in range(len(df)):
         insert_entry_list.append(SavedSearchResults(Pksearch=obj_pk_search,
@@ -112,22 +110,18 @@ def save_search_result(df, letters, free_letter):
     SavedSearchResults.objects.bulk_create(insert_entry_list)
 
 def get_df_saved_search_result(obj_search):
-    obj_result = SavedSearchResults.objects.filter(Pksearch=obj_search)
-    columns = ['words', 'missing', 'length', 'score']
-    df = pd.DataFrame(np.empty(shape=[len(obj_result),len(columns)], dtype=str), columns=columns)
-    i = 0
-    for obj in obj_result:
-        df.loc[i,'words'] = obj.Word_name
-        df.loc[i,'missing'] = obj.Missing
-        df.loc[i,'length'] = obj.Length
-        df.loc[i,'score'] = obj.Score
-        i += 1
-    return df
+    
+    qs = SavedSearchResults.objects.filter(Pksearch=obj_search)
+    q = qs.values('Word_name','Missing','Length','Score')
+    df = pd.DataFrame.from_records(q)
+
+    return df.rename(columns={'Word_name': 'words', 'Missing': 'missing', 'Length':'length', 'Score':'score'})
 
 
 def get_search_result(letters, free_letter):
-    pk_search = get_pk_search(letters, free_letter)
+    pk_search = get_pk_search(letters, free_letter+1)
     obj_search = SavedSearchParameters.objects.filter(Letters_list = pk_search)
+    
     if len(obj_search) == 0:
         print('does not search exists')
         return get_list_of_words(letters, free_letter+1)

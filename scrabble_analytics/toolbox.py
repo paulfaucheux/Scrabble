@@ -31,6 +31,8 @@ letter_value = {
 
 def get_score(word):
     score = 0
-    for c in word[:-1]:
+    for c in word:
         score += letter_value[c.lower()]
+    if len(word) >= 8:
+        score += 50
     return score

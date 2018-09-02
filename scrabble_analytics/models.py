@@ -24,8 +24,8 @@ class SavedSearchParameters(models.Model):
     Letters_list = models.CharField(max_length = 20)
     Created_date = models.DateTimeField(auto_now_add=True)
 
-    def delete_everything(self):
-        SavedSearchParameters.objects.all().delete()
+    #def delete_everything(self):
+    #    SavedSearchParameters.objects.all().delete()
 
 class SavedSearchResults(models.Model):
     Word_name = models.CharField(max_length = 20)
@@ -34,5 +34,5 @@ class SavedSearchResults(models.Model):
     Score = models.IntegerField()
     Pksearch = models.ForeignKey(SavedSearchParameters, on_delete=models.CASCADE)
 
-    def delete_everything(self):
-        SavedSearchResults.objects.all().delete()
+    #def delete_everything(self):
+    #    SavedSearchResults.objects.all().delete()
