@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {{ title }} {{ block.supper }}
+{% endblock title %}
+
+{% block content_search %}
+<div>
+    <p>Please enter the list of letter you have to create your word, if you have a blank letter then use the symbol "_"</p>
+    <p>If you want to refine your search you can look for matches for either "missing" or "words". Please use the following format &word:AQS if you want a word containing either "A", "Q" or "S"</p>
+</div>
+
+{% endblock %}
+
+
+{% block content_result %}
+    {% if has_result %}
+        <div>
+            <p>The list of letters is: {{list_letters}}. There are {{free_letter}} blank letter(s)</p>
+            {{table | safe}}
+            
+        </div>
+    {% else %}
+        <div></div> 
+    {% endif %}
+{% endblock %}
+
+
+

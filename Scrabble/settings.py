@@ -25,7 +25,7 @@ SECRET_KEY = 'a3ob=1x9n_tk5#bsc4mv16^25cg&#kiyckvh_#pcawe67!*aba'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['gbhql82','localhost']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -122,9 +122,4 @@ STATIC_URL = '/static/'
 
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
-)
-
-STATICFILES_FINDERS = (
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 )

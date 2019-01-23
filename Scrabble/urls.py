@@ -16,9 +16,11 @@ Including another URLconf
 from django.contrib import admin
 from django.conf.urls import url
 from django.urls import path
-from scrabble_analytics.views import HomeView
+from scrabble_analytics.views import HomeView, About
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     url(r'^$', HomeView.as_view()),
+    url(r'about/$', About),
+
 ]
