@@ -16,19 +16,20 @@ with open(f_db,'r') as f:
     for line in f:
         i += 1
         data = line[:-1]
-        set_data = sorted(set([l for l in data]))
+        set_data = ''.join(sorted(set([l.upper() for l in data])))
         q_ws = WordsSet.objects.filter(Wordset_name=set_data)
         if q_ws.exists():
             insert_word_list.append(Words(Word_name=data,
                 Length=len(data),
                 Score=get_score(data),
-                Word_set=  q_ws.first()
+                Word_set=  q_ws.first(),
+                Word_name_len=len(data)
             ))
         else:
             WordsSet(Wordset_name=set_data).save()
         if i >= step:
             print(str(i/total*100) + ' %')
-            step += total / 20 
+            step += total / 20
 
 Words.objects.bulk_create(insert_word_list)
 

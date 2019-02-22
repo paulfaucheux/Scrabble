@@ -30,6 +30,7 @@ MOT_TRIPLE = 6
 MOT_DOUBLE = 5
 LETTRE_TRIPLE = 4
 LETTRE_DOUBLE = 3
+WILDCHAR = '_'
 
 def get_score(word):
     score = 0

@@ -11,6 +11,7 @@ class Words(models.Model):
     Length = models.IntegerField()
     Score = models.IntegerField()
     Word_set = models.ForeignKey(WordsSet, on_delete=models.CASCADE)
+    Word_name_len = models.PositiveIntegerField()
 
     def __str__(self):
         return str(self.Word_name) + ' Length: ' + str(self.Length) + ' Score: ' + str(self.Score)
@@ -23,7 +24,8 @@ class Words(models.Model):
             self.Length = len(self.Word_name)
         if self.Score is None:
             self.Score = get_score(self.Word_name)
-        super(Words, self).save(*args, **kwargs)
+        self.Word_name_len = len(self.Word_name)
+        return super(Words, self).save(*args, **kwargs)
 
 class SavedSearchParameters(models.Model):
     Letters_list = models.CharField(max_length = 20)
