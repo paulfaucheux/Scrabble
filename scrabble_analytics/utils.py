@@ -1,5 +1,5 @@
-import re
 from collections import Counter
+import re
 import numpy as np
 import pandas as pd
 
@@ -128,7 +128,6 @@ def get_df_saved_search_result(obj_search):
     qs = SavedSearchResults.objects.filter(Pksearch=obj_search)
     q = qs.values('Word_name','Missing','Length','Score')
     df = pd.DataFrame.from_records(q)
-
     return df.rename(columns={'Word_name': 'words', 'Missing': 'missing', 'Length':'length', 'Score':'score'})
 
 
@@ -292,7 +291,7 @@ def get_score_letters_needed_word(line, word, start_pos):
     triple = 0
 
     for i in range(0,len(word)):
-        if (word[i] != line[i+start_pos])  & (not str(line[i+start_pos]).isdigit()):
+        if (word[i] != line[i+start_pos])  & (str(line[i+start_pos]).isalpha()):
             return -1, 0
         elif line[i+start_pos] == MOT_TRIPLE:
             triple += 1
@@ -304,6 +303,7 @@ def get_score_letters_needed_word(line, word, start_pos):
             score += DICT_LETTER[word[i]] * 2
         elif line[i+start_pos] == word[i]:
             existing_letters += 1
+            score += DICT_LETTER[word[i]]
         else:
             score += DICT_LETTER[word[i]]
 
@@ -375,7 +375,7 @@ def return_word(scrabble,row,col,direction,word):
         elif direction == 3:
             return return_word(scrabble,row,col+1,3,str(word) + str(scrabble[row][col]))
         else:
-            return -1
+            return None
     else:
         return word
 
@@ -422,22 +422,34 @@ def get_line_constrainsts(scrabble,line_position,line,available_letters):
     else:
         return -1
 
-def get_start_end(list_constraints):
-    mask = ''.join(['0' if '?' in item else '1' for item in list_constraints])
-    mask = '10' + mask + '01'
-    list_start = []
-    list_end = []
-    ans = [''.join(list_constraints)]
-    for i in range(0,len(mask)):
-        if mask[i:i+2] == '10':
-            list_start.append(i)
-        if mask[i-2:i] == '01':
-            list_end.append(i+2)
-    if len(list_start) > 2:
-        for start,end in tuple(zip(list_start, list_end)):
-            if not all([True if '[-1]' in i else False for i in list_constraints[start:end] if ('?' not in i)]):
-                ans.append(''.join(list_constraints[start:end]))
+def split_constraints(list_constraints):
+    ans = []
+    current_list = []
+    for item in list_constraints:
+        if '[-1]' in item:
+            if bool(current_list):
+                ans.append(current_list)
+                current_list = []
+        else:
+            current_list.append(item)
+    if bool(current_list):
+        ans.append(current_list)
     return ans
+
+def get_start_end(list_constraints):
+    ans = []
+    for sublist_constraint in split_constraints(list_constraints):
+        mask = ''.join(['0' if '?' in sublist_constraint[i] else str(i+1) for i in range(0,len(sublist_constraint))])
+        string = '10' + mask + '01'
+        matches = re.finditer(r'(?=([1-9]{1}[0]{1}[0]*[1-9]+[0]*[0]{1}[1-9]{1}))',string)
+        results = [match.group(1)[2:-2] for match in matches]
+        for result in results:
+            no_zero_val_index = int([match.span()[1]-1 for match in re.finditer(r'[1-9]{1}',result)][0])
+            no_zero_val_value = int([match.group() for match in re.finditer(r'[1-9]{1}',result)][0])
+            start_pos = no_zero_val_value-no_zero_val_index-1 if no_zero_val_value-no_zero_val_index-1 >= 0 else no_zero_val_value-no_zero_val_index-1 + 10
+            ans.append(''.join(sublist_constraint[(start_pos):(start_pos+len(result))]))
+    return list(np.hstack(ans))
+
 
 def validWord(word, letterList):
     word2, word1 = Counter(word), Counter(letterList)
@@ -451,8 +463,9 @@ def get_list_words_associated_score(line,available_letters_all,regex_constrainst
     list_score = []
     i_constraint = 0
     for constraint in get_start_end(regex_constrainst_array):
-        print('constraint: ',constraint)
+        #print('constraint: ',constraint)
         for item in Words.objects.filter(Word_name__regex= r'^' + constraint + r'$').values('Word_name'):
+            #print(item['Word_name'],': ',validWord(item['Word_name'], available_letters_all))
             if validWord(item['Word_name'], available_letters_all):
                 if i_constraint > 0:
                     i_constraint -= 1
@@ -460,9 +473,11 @@ def get_list_words_associated_score(line,available_letters_all,regex_constrainst
                 word_indexes = find(item['Word_name'],anchor_value)
                 for w_index in word_indexes:
                     if w_index < anchor_index:
-                        if (len(item['Word_name']) - w_index + anchor_index) < 11:
+                        if (len(item['Word_name']) - w_index -1 + anchor_index) < 11:
                             start_index = anchor_index - w_index
+                            #print(line,item['Word_name'],start_index)
                             score = get_score_letters_needed_word(line,item['Word_name'],start_index)[0]
+                            #print('score: ',score,': ', item['Word_name'])
                             if score > 0:
                                 list_score.append(score)
                                 list_words.append(item['Word_name'])

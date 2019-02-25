@@ -33,24 +33,24 @@ from scrabble_analytics.utils import create_scrabble_board, enter_new_word, get_
 scrabble = create_scrabble_board()
 
 scrabble = create_scrabble_board()
-enter_new_word(scrabble,'tom',5,4,0)
-enter_new_word(scrabble,'osames',5,5,1)
-enter_new_word(scrabble,'miniez',8,5,0)
-enter_new_word(scrabble,'fixas',10,1,0)
+scrabble = enter_new_word(scrabble,'tom',5,4,0)
+scrabble = enter_new_word(scrabble,'osames',5,5,1)
+scrabble = enter_new_word(scrabble,'miniez',8,5,0)
+scrabble = enter_new_word(scrabble,'fixas',10,1,0)
 
 
-player_letters = get_letters_from_player('ema')
+player_letters = get_letters_from_player('lksojee')
 
 free_space = get_free_space(scrabble)
 list_possible_solutions = []
 list_final_tuple = []
 
 for line_position, line in free_space:
-    board_letters = sorted(set([l for l in line if str(l).isalpha()]))
-    available_letters = sorted(set(np.hstack([player_letters,board_letters])))
     print(line_position, line)
-    regex_constrainst_array = get_line_constrainsts(scrabble,line_position,line,available_letters)
-    list_words_score = get_list_words_associated_score(line, list(np.hstack([player_letters,board_letters])),regex_constrainst_array)
+    regex_constrainst_array = get_line_constrainsts(scrabble,line_position,line,player_letters)
+    list_words_score = get_list_words_associated_score(line
+        , list(np.hstack([player_letters,sorted(set([l for l in line if str(l).isalpha()]))]))
+        ,regex_constrainst_array)
     print('list_words_score: ',list_words_score)
     if bool(list_words_score):
         list_final_tuple.append([(line_position, word, score) for word, score in list_words_score])
