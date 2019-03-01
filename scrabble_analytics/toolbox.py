@@ -32,6 +32,8 @@ LETTRE_TRIPLE = 4
 LETTRE_DOUBLE = 3
 WILDCHAR = '_'
 
+ALPHABET = list(DICT_LETTER.keys())
+
 def get_score(word):
     score = 0
     for c in word:

@@ -4,14 +4,14 @@ import numpy as np
 import pandas as pd
 
 from django.shortcuts import render
-from scrabble_analytics.toolbox import get_score, MOT_TRIPLE, MOT_DOUBLE, LETTRE_TRIPLE, LETTRE_DOUBLE, DICT_LETTER, WILDCHAR
+from scrabble_analytics.toolbox import get_score, MOT_TRIPLE, MOT_DOUBLE, LETTRE_TRIPLE, LETTRE_DOUBLE, DICT_LETTER, ALPHABET
 from scrabble_analytics.models import Words, SavedSearchParameters, SavedSearchResults
 
 def get_pk_search(letters, free_letter):
     return ''.join(sorted(letters)) + ''.join([ '_' for c in range(free_letter)])
 
 def get_clean_list_letters(list_letters):
-    return [c for c in list_letters if c.isalpha()], [c for c in list_letters].count('_')
+    return ''.join([c for c in list_letters if c.isalpha()]), [c for c in list_letters].count('_')
 
 def get_parameter_value(parameter):
     filter_param = parameter.split(':')
@@ -41,72 +41,70 @@ def filtered_dataframe(df,label,value):
         return None
     return df
 
-def get_dict_list_letters(list_letters):
-    dict_word = dict()
-    for letter in list_letters:
-        if letter in dict_word:
-            dict_word[letter] += 1
-        else:
-            dict_word[letter] = 1
-    return dict_word
+def get_list_free_letters_options(free_letter):
+    ans = []
+    previous_letter_1 = previous_letter_2 = ''
 
-def check_enough_letters(word, letters, blank):
-    dict_word = get_dict_list_letters(list(word))
-    dict_letters = get_dict_list_letters(letters)
-    missing = []
-    for k,v in dict_word.items():
-        if k in dict_letters:
-            #print('k:{}:dict_letters[k]:{}:v:{}:blank:{}'.format(k,dict_letters[k],v,blank))
-            if (dict_letters[k] + blank) < v:
-                return (False,missing)
-            else:
-                if (v - dict_letters[k]) > 0:
-                    blank -= v - dict_letters[k]
-                    missing = np.append(missing,k)
-                    if blank < 0:
-                        return (False,missing)
-        elif v > blank:
-            #print('k:{}:v:{}:blank:{}'.format(k,v,blank))
-            return (False, missing)
-        else:
-            #print('k:{}:v:{}:blank:{}'.format(k,v,blank))
-            blank -= v
-            missing = np.append(missing,k)
-            if blank < 0:
-                return (False,missing)
-    return (True, missing)
-
-def get_list_of_words(letters, free_letter):
-
-    array_words = []
-    array_missing = []
-    print(letters)
-    all_entries = Words.objects.all()
-    for w in all_entries:
-        w = w.Word_name
-        if set(w).issubset(letters):
-            (check, missing) = check_enough_letters(w,letters, free_letter)
-            if check:
-                #print('{} missing {}'.format(word,missing))
-                array_words = np.append(array_words, w)
-                if type(missing) is np.ndarray:
-                    array_missing = np.append(array_missing, ''.join(missing))
+    if free_letter == 3:
+        for letter_3 in ALPHABET:
+            for letter_2 in ALPHABET:
+                if previous_letter_2 == letter_3:
+                    break
                 else:
-                    array_missing = np.append(array_missing, [ '' if not missing else missing])
-        elif len(list(set(w))) <= len(list(set(letters))) + free_letter:
-            #print(word)
-            (check, missing) = check_enough_letters(w,letters, free_letter)
-            if check:
-                #print('{} missing {}'.format(word,missing))
-                array_words = np.append(array_words, w)
-                if type(missing) is np.ndarray:
-                    array_missing = np.append(array_missing, ''.join(missing))
+                    for letter_1 in ALPHABET:
+                        if previous_letter_1 == letter_2:
+                            break
+                        else:
+                            ans.append(letter_1+letter_2+letter_3)
+                        previous_letter_1 = letter_1
+            previous_letter_2 = letter_2
+    elif free_letter == 2:
+        for letter_2 in ALPHABET:
+            for letter_1 in ALPHABET:
+                if previous_letter_1 == letter_2:
+                    break
                 else:
-                    array_missing = np.append(array_missing, [ '' if not missing else missing])
+                    ans.append(letter_1+letter_2)
+                previous_letter_1 = letter_1
+    elif free_letter == 1:
+        for letter in ALPHABET:
+            ans.append(letter)
+    return ans
 
-    df = pd.DataFrame({'words':array_words,'missing':array_missing, 'length': [len(w) for w in array_words], 'score': [ get_score(w) for w in array_words]})
+def get_list_words(letters,free_letter):
+    df = pd.DataFrame()
+    qs = Words.objects.all().values('Word_name')
+    qs_list = [word['Word_name'] for word in qs]
+    free_letter_options = get_list_free_letters_options(free_letter)
+    for free_letter_option in free_letter_options:
+        available_letters = letters + free_letter_option
+        letters_available_unique = ''.join(list(set(available_letters)))
+        letters_available_duplicates_unique = letters_available_unique
+        duplicate_letters = dict()
+        count_search = 0
+        for letter in available_letters:
+            count = available_letters.count(letter)
+            if count > 1:
+                duplicate_letters[letter] = count
+                letters_available_duplicates_unique = letters_available_duplicates_unique.replace(letter,'')
+            count_search += count
+            if count_search >= len(available_letters):
+                break
+        if bool(duplicate_letters):
+            special_part = ''.join([ '(?!(.*'+str(k)+'){'+str(v+1) + '})' for k,v in duplicate_letters.items()])
+            regex = r'^(?!.*([' + letters_available_duplicates_unique + r']).*\1)(' +special_part + ')[' + letters_available_unique + r']*$'
+        else:
+            regex = r'^(?!.*(.).*\1)[' + available_letters + r']*$'
 
-    print('{}--DONE--{}--{}'.format(len(array_words),len(array_missing),len(df)))
+        df_temp = pd.DataFrame()
+
+        df_temp['words'] = [word for word in qs_list if re.search(regex,word)]
+        df_temp['missing'] = ''.join(free_letter_option)
+        df = df.append(df_temp)
+
+    df['length'] = df['words'].str.len()
+    df['score'] = df['words'].apply(lambda x: get_score(x))
+
     save_search_result(df, letters, free_letter)
     return df
 
@@ -137,7 +135,7 @@ def get_search_result(letters, free_letter):
 
     if not obj_search.exists():
         print('The search does not exist')
-        return get_list_of_words(letters, free_letter+1)
+        return get_list_words(letters, free_letter+1)
     else:
         print('The search exists already')
         return get_df_saved_search_result(obj_search[0])
@@ -207,11 +205,11 @@ def is_enough_space_for_word(scrabble,word,start_row,start_col,orientation):
 def enter_new_word(scrabble,word,start_row,start_col,orientation):
     if is_enough_space_for_word(scrabble,word,start_row,start_col,orientation):
         if orientation == 1:
-            for k in range(0,len(word)):
+            for k,v in enumerate(word):
                 scrabble[start_row+k,start_col] = word[k].upper()
             return scrabble
         else:
-            for k in range(0,len(word)):
+            for k,v in enumerate(word):
                 scrabble[start_row,start_col+k] = word[k].upper()
             return scrabble
     else:
@@ -224,7 +222,7 @@ def is_space_in_string(row):
             l += 1
             #if l > 2:
             #    return False
-        elif l == 0:
+        elif l == '-':
             continue
         else:
             l = 1
@@ -249,40 +247,6 @@ def get_letters_from_player(letters):
     letters = [l.upper() for l in letters]
     return letters
 
-def read_dict_file():
-    # dict_words = {'EJKR':['JERKE','JERKE']
-    #     ,'ACEHT':['CHATTE','TACHE','TACHEE','CACHET']
-    #     , 'ACEILU': ['ACCEUIL','CALCULAI','CULAI']
-    #     , 'AILU':['LUAI','LUAI']
-    #     , 'ACEILSU': ['ACCEUILS','ACCEUILSS']
-    #     , 'ALPU':['PAULA']
-    # }
-    dict_words = dict()
-    for item in Words.objects.values('Word_set__Wordset_name','Word_name'):
-        if item['Word_set__Wordset_name'] in dict_words.keys():
-            dict_words[item['Word_set__Wordset_name']].append(item['Word_name'])
-        else:
-            dict_words[item['Word_set__Wordset_name']] = [item['Word_name']]
-    return dict_words
-
-#! depreciated
-# def get_possible_words(dict_words, set_of_unique_letters):
-#     #dict_words = read_dict_file()
-
-#     words = []
-#     for key in dict_words.keys():
-#         add_key = True
-#         set_of_unique_letters_temp = set_of_unique_letters
-#         for l in key:
-#             if l not in ''.join(set_of_unique_letters_temp):
-#                 if WILDCHAR in set_of_unique_letters_temp:
-#                     set_of_unique_letters_temp = np.delete(set_of_unique_letters_temp, np.where(set_of_unique_letters_temp == WILDCHAR)[0], axis=0)
-#                 else:
-#                     add_key = False
-#                     break
-#         if add_key:
-#             words = np.hstack([words, dict_words[key]])
-#     return words
 
 def get_score_letters_needed_word(line, word, start_pos):
     score = 0
@@ -290,7 +254,7 @@ def get_score_letters_needed_word(line, word, start_pos):
     double = 0
     triple = 0
 
-    for i in range(0,len(word)):
+    for i,v in enumerate(word):
         if (word[i] != line[i+start_pos])  & (str(line[i+start_pos]).isalpha()):
             return -1, 0
         elif line[i+start_pos] == MOT_TRIPLE:
@@ -313,39 +277,6 @@ def get_score_letters_needed_word(line, word, start_pos):
         score *= 2 * double
     return score, len(word) - existing_letters
 
-
-def get_position_word(line, word, player_letters, board_letters):
-    set_letters = np.hstack([player_letters, board_letters])
-    for l in word:
-        if l in set_letters:
-            set_letters = np.delete(set_letters, np.where(set_letters == l)[0][0], axis=0)
-        elif WILDCHAR in set_letters:
-            set_letters = np.delete(set_letters, np.where(set_letters == WILDCHAR)[0][0], axis=0)
-        else:
-            return -1, 0
-    for start in range(0,len(line)-len(word)+1):
-        match = 0
-        for i in range(0,len(word)):
-            if str(line[i+start]).isalpha():
-                if str(line[i+start]) != word[i]:
-                    break
-                else:
-                    match += 1
-        if match > 0:
-            if start == 0:
-                if len(line) == len(word)+start:
-                    return get_score_letters_needed_word(line, word, start)
-                elif not str(line[len(word)+start]).isalpha():
-                    return get_score_letters_needed_word(line, word, start)
-            elif str(line[start-1]).isdigit():
-                if len(line) == len(word)+start:
-                    return get_score_letters_needed_word(line, word, start)
-                elif not str(line[len(word)+start]).isalpha():
-                    return get_score_letters_needed_word(line, word, start)
-            else:
-                return -1, 0
-    return -1, 0
-
 def print_scrabble(scrabble):
     for row in scrabble:
         line = ''
@@ -353,74 +284,52 @@ def print_scrabble(scrabble):
             line += str(col) + ' '
         print(line)
 
-
-
-def return_word(scrabble,row,col,direction,word):
-#     direction: define where we are searching
-#     0: up
-#     1: down
-#     2: left
-#     3: right
-    if (row < 0) | (col < 0):
-        return word
-    if (row > 10) | (col > 10):
-        return word
-    elif str(scrabble[row][col]).isalpha():
-        if direction == 0:
-            return return_word(scrabble,row-1,col,0,str(word) + str(scrabble[row][col]))
-        elif direction == 1:
-            return return_word(scrabble,row+1,col,1,str(word) + str(scrabble[row][col]))
-        elif direction == 2:
-            return return_word(scrabble,row,col-1,2,str(word) + str(scrabble[row][col]))
-        elif direction == 3:
-            return return_word(scrabble,row,col+1,3,str(word) + str(scrabble[row][col]))
-        else:
-            return None
-    else:
-        return word
-
-def get_list_of_allowed_letters(first_part_word,last_part_word,board_letters):
+def get_constraint_item(isColumn,line_position,current_position,scrabble,line,available_letters):
+    current_line = list(scrabble[:][current_position] if isColumn else scrabble[current_position][:])
+    current_line = [str(item) for item in current_line]
+    prefixes = re.findall(r'([A-Z]*['+str(line[current_position])+r'])[A-Z0-9\-]{'+str(10-line_position)+'}',''.join(current_line))
+    suffixes = re.findall(r'[A-Z\-0-9]{'+str(line_position)+'}(['+str(line[current_position])+'][A-Z]*)',''.join(current_line))
+    constraints = []
     letters = []
-    #print('query: ',first_part_word,'_',last_part_word,' len: ',1+len(first_part_word)+len(last_part_word))
-    regex_to_apply = '^'+first_part_word+'[' + ','.join(board_letters)+']'+last_part_word+'$'
-    #print('regex_to_apply: ',regex_to_apply)
-    for item in Words.objects.filter(Word_name__regex=regex_to_apply).values('Word_name'):
-        letters.append(item['Word_name'][len(first_part_word)])
-    return list(set(letters))
+    for prefix in prefixes:
+        for suffix in suffixes:
+            if (len(prefix) > 1) & (len(suffix) > 1):
+                constraint = prefix[:-1] + '['+','.join(list(set(available_letters)))+']{1}' + suffix[1:]
+            elif (len(prefix) > 1) & (len(suffix) <= 1):
+                constraint = prefix[:-1] + '['+','.join(list(set(available_letters)))+']{1}'
+            elif (len(prefix) <= 1) & (len(suffix) > 1):
+                constraint = '['+','.join(list(set(available_letters)))+']{1}' + suffix[1:]
+            else:
+                return [],False
+            #print('prefix: ',prefix,' suffix: ',suffix)
+            #print('constraint: ',constraint)
+            constraints.append((constraint,len(prefix)-1))
+    for constraint, letters_position in constraints:
+        for item in Words.objects.filter(Word_name__regex=r'^'+constraint+'$').values('Word_name'):
+            letters.append(item['Word_name'][letters_position])
+    return [str(ltr) for ltr in list(set(letters)) if re.search('[A-Z]{1}',ltr)],True
 
 def get_line_constrainsts(scrabble,line_position,line,available_letters):
-    allowed_letters = ['['+','.join(list(set(available_letters)))+']?' for i in range(0,11)]
-    if line_position[0] == 'c':
-        for row in range(0,11):
-            if str(scrabble[row,int(line_position[1:])]).isalpha():
-                allowed_letters[row] = '['+str(scrabble[row,int(line_position[1:])])+']'
+    line_constraints = ['['+','.join(list(set(available_letters)))+']?' for i in range(0,11)]
+    for current_position in range(0,11):
+        if str(line[current_position]).isalpha():
+            line_constraints[current_position] = '['+ str(line[current_position]) + r']{1}'
+            continue
+        elif line_position[0] == 'c':
+            constraint_list_letters, flag = get_constraint_item(True,int(line_position[1]),current_position,scrabble,line,available_letters)
+        elif line_position[0] == 'r':
+            constraint_list_letters, flag = get_constraint_item(False,int(line_position[1]),current_position,scrabble,line,available_letters)
+        else:
+            raise ValueError('neither col nor row')
+        if flag:
+            if bool(constraint_list_letters):
+                line_constraints[current_position] = '['+ ','.join(constraint_list_letters) + ']{1}'
             else:
-                first_part_word = return_word(scrabble,row,int(line_position[1:])-1,2,'')
-                last_part_word = return_word(scrabble,row,int(line_position[1:])+1,3,'')
-                if (bool(first_part_word)) | (bool(last_part_word)):
-                    list_letters_authorized = get_list_of_allowed_letters(first_part_word,last_part_word,available_letters)
-                    if bool(list_letters_authorized):
-                        allowed_letters[row] = '['+','.join(list_letters_authorized) + ']?'
-                    else:
-                        allowed_letters[row] = '[-1]'
-        return allowed_letters
-    elif line_position[0] == 'r':
-        for col in range(0,11):
-            if str(scrabble[int(line_position[1:]),col]).isalpha():
-                allowed_letters[col] = '['+str(scrabble[int(line_position[1:]),col])+']'
-            else:
-                first_part_word = return_word(scrabble,int(line_position[1:])-1,col,0,'')
-                first_part_word = first_part_word[::-1] # Reverse the string
-                last_part_word = return_word(scrabble,int(line_position[1:])+1,col,1,'')
-                if (bool(first_part_word)) | (bool(last_part_word)):
-                    list_letters_authorized = get_list_of_allowed_letters(first_part_word,last_part_word,available_letters)
-                    if bool(list_letters_authorized):
-                        allowed_letters[col] = '['+','.join(list_letters_authorized) + ']?'
-                    else:
-                        allowed_letters[col] = '[-1]'
-        return allowed_letters
-    else:
-        return -1
+                line_constraints[current_position] = '[-1]'
+        else:
+            continue
+
+    return line_constraints
 
 def split_constraints(list_constraints):
     ans = []
@@ -436,19 +345,21 @@ def split_constraints(list_constraints):
         ans.append(current_list)
     return ans
 
-def get_start_end(list_constraints):
+def get_constraints_per_line(list_main_constraints):
     ans = []
-    for sublist_constraint in split_constraints(list_constraints):
-        mask = ''.join(['0' if '?' in sublist_constraint[i] else str(i+1) for i in range(0,len(sublist_constraint))])
+    for sublist_constraint in split_constraints(list_main_constraints):
+        mask = ''.join(['0' if '{1}' not in sublist_constraint[i] else str(i+1) for i in range(0,len(sublist_constraint))])
+        #print('mask: ',mask)
         string = '10' + mask + '01'
         matches = re.finditer(r'(?=([1-9]{1}[0]{1}[0]*[1-9]+[0]*[0]{1}[1-9]{1}))',string)
         results = [match.group(1)[2:-2] for match in matches]
+        #print('results: ',results)
         for result in results:
             no_zero_val_index = int([match.span()[1]-1 for match in re.finditer(r'[1-9]{1}',result)][0])
             no_zero_val_value = int([match.group() for match in re.finditer(r'[1-9]{1}',result)][0])
             start_pos = no_zero_val_value-no_zero_val_index-1 if no_zero_val_value-no_zero_val_index-1 >= 0 else no_zero_val_value-no_zero_val_index-1 + 10
             ans.append(''.join(sublist_constraint[(start_pos):(start_pos+len(result))]))
-    return list(np.hstack(ans))
+    return list(set(np.hstack(ans))) if bool(ans) else []
 
 
 def validWord(word, letterList):
@@ -458,30 +369,27 @@ def validWord(word, letterList):
 def find(s, ch):
     return [i for i, ltr in enumerate(s) if ltr == ch]
 
-def get_list_words_associated_score(line,available_letters_all,regex_constrainst_array):
+def get_list_words_associated_score(line,available_letters_all,regex_list_constrainsts):
     list_words = []
     list_score = []
-    i_constraint = 0
-    for constraint in get_start_end(regex_constrainst_array):
-        #print('constraint: ',constraint)
+    for constraint in get_constraints_per_line(regex_list_constrainsts):
         for item in Words.objects.filter(Word_name__regex= r'^' + constraint + r'$').values('Word_name'):
-            #print(item['Word_name'],': ',validWord(item['Word_name'], available_letters_all))
             if validWord(item['Word_name'], available_letters_all):
-                if i_constraint > 0:
-                    i_constraint -= 1
-                anchor_index, anchor_value = [(i, ltr) for i, ltr in enumerate(line) if str(ltr).isalpha()][i_constraint]
-                word_indexes = find(item['Word_name'],anchor_value)
-                for w_index in word_indexes:
-                    if w_index < anchor_index:
-                        if (len(item['Word_name']) - w_index -1 + anchor_index) < 11:
-                            start_index = anchor_index - w_index
-                            #print(line,item['Word_name'],start_index)
-                            score = get_score_letters_needed_word(line,item['Word_name'],start_index)[0]
-                            #print('score: ',score,': ', item['Word_name'])
-                            if score > 0:
-                                list_score.append(score)
-                                list_words.append(item['Word_name'])
-        i_constraint += 1
+                for i in range(0,11-len(item['Word_name'])):
+                    match = 0
+                    for start in range(0,len(item['Word_name'])):
+                        if str(line[i+start]).isalpha():
+                            if str(line[i+start]) == item['Word_name'][start]:
+                                match += 1
+                                start_index = i
+                            else:
+                                continue
+                    if match > 0:
+                        score = get_score_letters_needed_word(line,item['Word_name'],start_index)[0]
+                        if score > 0:
+                            list_score.append(score)
+                            list_words.append(item['Word_name'])
+                        break
     return tuple(zip(list_words,list_score))
 
 def print_solution(data):
