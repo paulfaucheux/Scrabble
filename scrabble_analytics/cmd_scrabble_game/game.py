@@ -2,21 +2,18 @@ import numpy as np
 from scrabble_analytics.utils import create_scrabble_board, enter_new_word, get_letters_from_player, get_free_space, print_scrabble, get_line_constrainsts, get_list_words_associated_score, print_solution
 
 scrabble = create_scrabble_board()
-scrabble = enter_new_word(scrabble,'ksi',8,2,1)
-scrabble = enter_new_word(scrabble,'coupiez',2,10,1)
-scrabble = enter_new_word(scrabble,'coke',8,0,0)
-scrabble = enter_new_word(scrabble,'bye',6,3,1)
-scrabble = enter_new_word(scrabble,'hava',3,2,1)
-scrabble = enter_new_word(scrabble,'wale',4,1,0)
-scrabble = enter_new_word(scrabble,'taud',3,4,0)
-scrabble = enter_new_word(scrabble,'oleine',5,8,1)
-scrabble = enter_new_word(scrabble,'qu',2,6,1)
-scrabble = enter_new_word(scrabble,'sera',10,7,0)
-scrabble = enter_new_word(scrabble,'je',9,4,0)
+scrabble = enter_new_word(scrabble,'bravee',5,1,0)
+scrabble = enter_new_word(scrabble,'aciera',1,2,1)
+scrabble = enter_new_word(scrabble,'oriya',7,0,0)
+scrabble = enter_new_word(scrabble,'wad',1,1,0)
+scrabble = enter_new_word(scrabble,'coxales',2,2,0)
+scrabble = enter_new_word(scrabble,'zone',6,0,1)
+
+
 
 print_scrabble(scrabble)
 
-player_letters = get_letters_from_player('ntigr')
+player_letters = get_letters_from_player('qonjnso')
 
 free_space = get_free_space(scrabble)
 list_possible_solutions = []

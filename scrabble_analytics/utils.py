@@ -11,7 +11,7 @@ def get_pk_search(letters, free_letter):
     return ''.join(sorted(letters)) + ''.join([ '_' for c in range(free_letter)])
 
 def get_clean_list_letters(list_letters):
-    return ''.join([c for c in list_letters if c.isalpha()]), [c for c in list_letters].count('_')
+    return [c for c in list_letters if c.isalpha()], [c for c in list_letters].count('_')
 
 def get_parameter_value(parameter):
     filter_param = parameter.split(':')
@@ -30,7 +30,7 @@ def filtered_dataframe(df,label,value):
         list_param = str([val + "|" for val in value])
         df = df[df[label].str.contains(list_param)]
     elif (label == 'words_contains') & (value.isalpha()):
-        df = df[df[label].str.contains(value)]
+        df = df[df['words'].str.contains(value)]
     elif (label == 'length') & (value.isdigit()):
         df = df[df['words'].str.len() >= float(value)]
     elif (label == 'missing') & (value.isalpha()):
@@ -41,72 +41,178 @@ def filtered_dataframe(df,label,value):
         return None
     return df
 
-def get_list_free_letters_options(free_letter):
-    ans = []
-    previous_letter_1 = previous_letter_2 = ''
 
-    if free_letter == 3:
-        for letter_3 in ALPHABET:
-            for letter_2 in ALPHABET:
-                if previous_letter_2 == letter_3:
-                    break
-                else:
-                    for letter_1 in ALPHABET:
-                        if previous_letter_1 == letter_2:
-                            break
-                        else:
-                            ans.append(letter_1+letter_2+letter_3)
-                        previous_letter_1 = letter_1
-            previous_letter_2 = letter_2
-    elif free_letter == 2:
-        for letter_2 in ALPHABET:
-            for letter_1 in ALPHABET:
-                if previous_letter_1 == letter_2:
-                    break
-                else:
-                    ans.append(letter_1+letter_2)
-                previous_letter_1 = letter_1
-    elif free_letter == 1:
-        for letter in ALPHABET:
-            ans.append(letter)
-    return ans
-
-def get_list_words(letters,free_letter):
-    df = pd.DataFrame()
-    qs = Words.objects.all().values('Word_name')
-    qs_list = [word['Word_name'] for word in qs]
-    free_letter_options = get_list_free_letters_options(free_letter)
-    for free_letter_option in free_letter_options:
-        available_letters = letters + free_letter_option
-        letters_available_unique = ''.join(list(set(available_letters)))
-        letters_available_duplicates_unique = letters_available_unique
-        duplicate_letters = dict()
-        count_search = 0
-        for letter in available_letters:
-            count = available_letters.count(letter)
-            if count > 1:
-                duplicate_letters[letter] = count
-                letters_available_duplicates_unique = letters_available_duplicates_unique.replace(letter,'')
-            count_search += count
-            if count_search >= len(available_letters):
-                break
-        if bool(duplicate_letters):
-            special_part = ''.join([ '(?!(.*'+str(k)+'){'+str(v+1) + '})' for k,v in duplicate_letters.items()])
-            regex = r'^(?!.*([' + letters_available_duplicates_unique + r']).*\1)(' +special_part + ')[' + letters_available_unique + r']*$'
+def get_dict_list_letters(list_letters):
+    dict_word = dict()
+    for letter in list_letters:
+        if letter in dict_word:
+            dict_word[letter] += 1
         else:
-            regex = r'^(?!.*(.).*\1)[' + available_letters + r']*$'
+            dict_word[letter] = 1
+    return dict_word
 
-        df_temp = pd.DataFrame()
+def check_enough_letters(word, letters, blank):
+    dict_word = get_dict_list_letters(list(word))
+    dict_letters = get_dict_list_letters(letters)
+    missing = []
+    for k,v in dict_word.items():
+        if k in dict_letters:
+            #print('k:{}:dict_letters[k]:{}:v:{}:blank:{}'.format(k,dict_letters[k],v,blank))
+            if (dict_letters[k] + blank) < v:
+                return (False,missing)
+            else:
+                if (v - dict_letters[k]) > 0:
+                    blank -= v - dict_letters[k]
+                    missing = np.append(missing,k)
+                    if blank < 0:
+                        return (False,missing)
+        elif v > blank:
+            #print('k:{}:v:{}:blank:{}'.format(k,v,blank))
+            return (False, missing)
+        else:
+            #print('k:{}:v:{}:blank:{}'.format(k,v,blank))
+            blank -= v
+            missing = np.append(missing,k)
+            if blank < 0:
+                return (False,missing)
+    return (True, missing)
 
-        df_temp['words'] = [word for word in qs_list if re.search(regex,word)]
-        df_temp['missing'] = ''.join(free_letter_option)
-        df = df.append(df_temp)
+def get_list_words(letters, free_letter):
 
-    df['length'] = df['words'].str.len()
-    df['score'] = df['words'].apply(lambda x: get_score(x))
+    array_words = []
+    array_missing = []
+    print(letters)
+    all_entries = Words.objects.all()
+    for w in all_entries:
+        w = w.Word_name
+        if set(w).issubset(letters):
+            (check, missing) = check_enough_letters(w,letters, free_letter)
+            if check:
+                #print('{} missing {}'.format(word,missing))
+                array_words = np.append(array_words, w)
+                if type(missing) is np.ndarray:
+                    array_missing = np.append(array_missing, ''.join(missing))
+                else:
+                    array_missing = np.append(array_missing, [ '' if not missing else missing])
+        elif len(list(set(w))) <= len(list(set(letters))) + free_letter:
+            #print(word)
+            (check, missing) = check_enough_letters(w,letters, free_letter)
+            if check:
+                #print('{} missing {}'.format(word,missing))
+                array_words = np.append(array_words, w)
+                if type(missing) is np.ndarray:
+                    array_missing = np.append(array_missing, ''.join(missing))
+                else:
+                    array_missing = np.append(array_missing, [ '' if not missing else missing])
 
+    df = pd.DataFrame({'words':array_words,'missing':array_missing, 'length': [len(w) for w in array_words], 'score': [ get_score(w) for w in array_words]})
+
+    print('{}--DONE--{}--{}'.format(len(array_words),len(array_missing),len(df)))
     save_search_result(df, letters, free_letter)
     return df
+
+# def get_pk_search(letters, free_letter):
+#     return ''.join(sorted(letters)) + ''.join([ '_' for c in range(free_letter)])
+
+# def get_clean_list_letters(list_letters):
+#     return ''.join([c for c in list_letters if c.isalpha()]), [c for c in list_letters].count('_')
+
+# def get_parameter_value(parameter):
+#     filter_param = parameter.split(':')
+#     if len(filter_param) != 2:
+#         print('Error: There is more than a label and a value in the parameter')
+#         return None, None
+#     else:
+#         return filter_param[0].strip().lower(), filter_param[1].strip().upper()
+
+# def filtered_dataframe(df,label,value):
+#     if (label == 'words_starts') & (value.isalpha()):
+#         df = df[df['words'].str.startswith(value)]
+#     elif (label == 'words_ends') & (value.isalpha()):
+#         df = df[df['words'].str.endswith(value)]
+#     elif (label == 'words') & (value.isalpha()):
+#         list_param = str([val + "|" for val in value])
+#         df = df[df[label].str.contains(list_param)]
+#     elif (label == 'words_contains') & (value.isalpha()):
+#         df = df[df['words'].str.contains(value)]
+#     elif (label == 'length') & (value.isdigit()):
+#         df = df[df['words'].str.len() >= float(value)]
+#     elif (label == 'missing') & (value.isalpha()):
+#         list_param = str([val + "|" for val in value])
+#         df = df[df[label].str.contains(list_param)]
+#     else:
+#         print('Error: The label or the value are not correct: ',label,value)
+#         return None
+#     return df
+
+# def get_list_free_letters_options(free_letter):
+#     ans = []
+#     previous_letter_1 = previous_letter_2 = ''
+
+#     if free_letter == 3:
+#         for letter_3 in ALPHABET:
+#             for letter_2 in ALPHABET:
+#                 if previous_letter_2 == letter_3:
+#                     break
+#                 else:
+#                     for letter_1 in ALPHABET:
+#                         if previous_letter_1 == letter_2:
+#                             break
+#                         else:
+#                             ans.append(letter_1+letter_2+letter_3)
+#                         previous_letter_1 = letter_1
+#             previous_letter_2 = letter_2
+#     elif free_letter == 2:
+#         for letter_2 in ALPHABET:
+#             for letter_1 in ALPHABET:
+#                 if previous_letter_1 == letter_2:
+#                     break
+#                 else:
+#                     ans.append(letter_1+letter_2)
+#                 previous_letter_1 = letter_1
+#     elif free_letter == 1:
+#         for letter in ALPHABET:
+#             ans.append(letter)
+#     return ans
+
+
+
+# def get_list_words(letters,free_letter):
+#     df = pd.DataFrame()
+#     qs = Words.objects.all().values('Word_name')
+#     qs_list = [word['Word_name'] for word in qs]
+#     free_letter_options = get_list_free_letters_options(free_letter)
+#     for free_letter_option in free_letter_options:
+#         available_letters = letters + free_letter_option
+#         letters_available_unique = ''.join(list(set(available_letters)))
+#         letters_available_duplicates_unique = letters_available_unique
+#         duplicate_letters = dict()
+#         count_search = 0
+#         for letter in available_letters:
+#             count = available_letters.count(letter)
+#             if count > 1:
+#                 duplicate_letters[letter] = count
+#                 letters_available_duplicates_unique = letters_available_duplicates_unique.replace(letter,'')
+#             count_search += count
+#             if count_search >= len(available_letters):
+#                 break
+#         if bool(duplicate_letters):
+#             special_part = ''.join([ '(?!(.*'+str(k)+'){'+str(v+1) + '})' for k,v in duplicate_letters.items()])
+#             regex = r'^(?!.*([' + letters_available_duplicates_unique + r']).*\1)(' +special_part + ')[' + letters_available_unique + r']*$'
+#         else:
+#             regex = r'^(?!.*(.).*\1)[' + available_letters + r']*$'
+
+#         df_temp = pd.DataFrame()
+
+#         df_temp['words'] = [word for word in qs_list if re.search(regex,word)]
+#         df_temp['missing'] = ''.join(free_letter_option)
+#         df = df.append(df_temp)
+
+#     df['length'] = df['words'].str.len()
+#     df['score'] = df['words'].apply(lambda x: get_score(x))
+
+#     save_search_result(df, letters, free_letter)
+#     return df
 
 def save_search_result(df, letters, free_letter):
     pk_search = get_pk_search(letters, free_letter)

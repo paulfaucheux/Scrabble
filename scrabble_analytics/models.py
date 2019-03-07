@@ -30,6 +30,9 @@ class Words(models.Model):
 class SavedSearchParameters(models.Model):
     Letters_list = models.CharField(max_length = 20)
     Created_date = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return str(self.Letters_list) + ' Created on: ' + str(self.Created_date)
 
     #def delete_everything(self):
     #    SavedSearchParameters.objects.all().delete()
