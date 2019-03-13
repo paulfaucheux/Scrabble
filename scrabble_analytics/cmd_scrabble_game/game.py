@@ -8,7 +8,12 @@ scrabble = enter_new_word(scrabble,'oriya',7,0,0)
 scrabble = enter_new_word(scrabble,'wad',1,1,0)
 scrabble = enter_new_word(scrabble,'coxales',2,2,0)
 scrabble = enter_new_word(scrabble,'zone',6,0,1)
-
+scrabble = enter_new_word(scrabble,'zone',6,0,1)
+scrabble = enter_new_word(scrabble,'sono',10,0,0)
+scrabble = enter_new_word(scrabble,'grill',9,3,0)
+scrabble = enter_new_word(scrabble,'hast',0,8,1)
+scrabble = enter_new_word(scrabble,'jas',1,7,0)
+scrabble = enter_new_word(scrabble,'teke',0,10,1)
 
 
 print_scrabble(scrabble)

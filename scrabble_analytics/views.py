@@ -20,7 +20,7 @@ class HomeView(View):
             list_letters = queries[0].strip()
             letters, free_letter = get_clean_list_letters(list_letters.upper())
             df = get_search_result(letters, free_letter)
-
+            #df.to_excel('test.xlsx')
             if len(queries) > 1: #Do we have parameters in the query?
                 for parameter in queries[1:]:
 

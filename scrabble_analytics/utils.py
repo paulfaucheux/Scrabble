@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from django.shortcuts import render
-from scrabble_analytics.toolbox import get_score, MOT_TRIPLE, MOT_DOUBLE, LETTRE_TRIPLE, LETTRE_DOUBLE, DICT_LETTER, ALPHABET
+from scrabble_analytics.toolbox import get_score, MOT_TRIPLE, MOT_DOUBLE, LETTRE_TRIPLE, LETTRE_DOUBLE, DICT_LETTER
 from scrabble_analytics.models import Words, SavedSearchParameters, SavedSearchResults
 
 def get_pk_search(letters, free_letter):
@@ -32,7 +32,7 @@ def filtered_dataframe(df,label,value):
     elif (label == 'words_contains') & (value.isalpha()):
         df = df[df['words'].str.contains(value)]
     elif (label == 'length') & (value.isdigit()):
-        df = df[df['words'].str.len() >= float(value)]
+        df = df[df['words'].str.len() == float(value)]
     elif (label == 'missing') & (value.isalpha()):
         list_param = str([val + "|" for val in value])
         df = df[df[label].str.contains(list_param)]
@@ -312,11 +312,11 @@ def enter_new_word(scrabble,word,start_row,start_col,orientation):
     if is_enough_space_for_word(scrabble,word,start_row,start_col,orientation):
         if orientation == 1:
             for k,v in enumerate(word):
-                scrabble[start_row+k,start_col] = word[k].upper()
+                scrabble[start_row+k,start_col] = v.upper()
             return scrabble
         else:
             for k,v in enumerate(word):
-                scrabble[start_row,start_col+k] = word[k].upper()
+                scrabble[start_row,start_col+k] = v.upper()
             return scrabble
     else:
         return -1
@@ -368,14 +368,14 @@ def get_score_letters_needed_word(line, word, start_pos):
         elif line[i+start_pos] == MOT_DOUBLE:
             double += 1
         elif line[i+start_pos] == LETTRE_TRIPLE:
-            score += DICT_LETTER[word[i]] * 3
+            score += DICT_LETTER[v] * 3
         elif line[i+start_pos] == LETTRE_DOUBLE:
-            score += DICT_LETTER[word[i]] * 2
-        elif line[i+start_pos] == word[i]:
+            score += DICT_LETTER[v] * 2
+        elif line[i+start_pos] == v:
             existing_letters += 1
-            score += DICT_LETTER[word[i]]
+            score += DICT_LETTER[v]
         else:
-            score += DICT_LETTER[word[i]]
+            score += DICT_LETTER[v]
 
     if triple > 0:
         score *= 3 * triple
