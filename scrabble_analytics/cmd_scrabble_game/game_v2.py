@@ -127,16 +127,30 @@ class Scrabble:
         else:
             if start_col > 0:
                 if str(self.scrabble_constraints[start_row][start_col-1]) == '.':
-                    self.scrabble_constraints[start_row][start_col-1] = starts
+                    if bool(starts):
+                        self.scrabble_constraints[start_row][start_col-1] = starts
+                    else:
+                        self.scrabble_constraints[start_row][start_col-1] = '0'
                 elif not str(self.scrabble_board[start_row][start_col-1]).isalpha():
                     existing = self.scrabble_constraints[start_row][start_col-1]
-                    self.scrabble_constraints[start_row][start_col-1] = list(set(existing).intersection(starts))
+                    new_constraint = list(set(existing).intersection(starts))
+                    if bool(new_constraint):
+                        self.scrabble_constraints[start_row][start_col-1] = new_constraint
+                    else:
+                        self.scrabble_constraints[start_row][start_col-1] = '0'
             if start_col+len(new_word) < 11:
                 if str(self.scrabble_constraints[start_row][start_col+len(new_word)]) == '.':
-                    self.scrabble_constraints[start_row][start_col+len(new_word)] = ends
+                    if bool(ends):
+                        self.scrabble_constraints[start_row][start_col+len(new_word)] = ends
+                    else:
+                        self.scrabble_constraints[start_row][start_col+len(new_word)] = '0'
                 elif not str(self.scrabble_board[start_row][start_col+len(new_word)]).isalpha():
                     existing = self.scrabble_constraints[start_row][start_col+len(new_word)]
-                    self.scrabble_constraints[start_row][start_col+len(new_word)] = list(set(existing).intersection(ends))
+                    new_constraint = list(set(existing).intersection(ends))
+                    if bool(new_constraint):
+                        self.scrabble_constraints[start_row][start_col+len(new_word)] = list(set(existing).intersection(ends))
+                    else:
+                        self.scrabble_constraints[start_row][start_col+len(new_word)] = '0'
 
     def check_character(self,line, letter, letter_pos):
         i=1
@@ -250,11 +264,13 @@ class Scrabble:
         else:
             line = self.scrabble_board[index][:]
         for i,v in enumerate(word):
-            if (word[i] != line[i+start_pos])  & (str(line[i+start_pos]).isalpha()):
-                return -1, 0
+            if (v != line[i+start_pos])  & (str(line[i+start_pos]).isalpha()):
+                return -1
             elif line[i+start_pos] == MOT_TRIPLE:
+                score += DICT_LETTER[v]
                 triple += 1
             elif line[i+start_pos] == MOT_DOUBLE:
+                score += DICT_LETTER[v]
                 double += 1
             elif line[i+start_pos] == LETTRE_TRIPLE:
                 score += DICT_LETTER[v] * 3
@@ -265,11 +281,12 @@ class Scrabble:
                 score += DICT_LETTER[v]
             else:
                 score += DICT_LETTER[v]
-
         if triple > 0:
             score *= 3 * triple
         if double > 0:
             score *= 2 * double
+        if len(word) > 7:
+            score += 35
         return score
 
 
@@ -277,8 +294,12 @@ scrabble = Scrabble()
 scrabble.enter_new_word('cotes',5,1,False)#=0
 scrabble.enter_new_word('fohn',4,2,True)
 scrabble.enter_new_word('jodles',0,5,True)
+scrabble.enter_new_word('parjure',0,2,False)
+scrabble.enter_new_word('mis',8,0,False)
 
-list_letters = 'rru_kea'
+print(scrabble.create_scrabble_board)
+
+list_letters = 'qbetksa'
 letters, free_letter = get_clean_list_letters(list_letters.upper())
 df = get_search_result(letters, free_letter)
 dict_length_words = df.set_index('length')['words'].groupby('length').apply(list).to_dict()
