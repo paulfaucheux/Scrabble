@@ -20,13 +20,18 @@ with open(f_db,'r') as f:
         q_ws = WordsSet.objects.filter(Wordset_name=set_data)
         if q_ws.exists():
             insert_word_list.append(Words(Word_name=data,
-                Length=len(data),
                 Score=get_score(data),
                 Word_set=  q_ws.first(),
                 Word_name_len=len(data)
             ))
         else:
-            WordsSet(Wordset_name=set_data).save()
+            q_wordsSet = WordsSet(Wordset_name=set_data)
+            q_wordsSet.save()
+            insert_word_list.append(Words(Word_name=data,
+                Score=get_score(data),
+                Word_set=  q_wordsSet,
+                Word_name_len=len(data)
+            ))
         if i >= step:
             print(str(i/total*100) + ' %')
             step += total / 20

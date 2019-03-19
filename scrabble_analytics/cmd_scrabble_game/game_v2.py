@@ -91,6 +91,49 @@ class Scrabble:
         else:
             return False
 
+    def update_constraint_cell(self,row,col,constraint):
+        if str(self.scrabble_constraints[row][col]) == '.':
+            if bool(constraint):
+                self.scrabble_constraints[row][col] = constraint
+            else:
+                self.scrabble_constraints[row][col] = '0'
+        elif not str(self.scrabble_board[row][col]).isalpha():
+            existing = self.scrabble_constraints[row][col]
+            new_constraint = list(set(existing).intersection(constraint))
+            if bool(new_constraint):
+                self.scrabble_constraints[row][col] = new_constraint
+            else:
+                self.scrabble_constraints[row][col] = '0'
+        return True
+
+
+    def get_list_previous_next_letters(self,line,start_pos,letter):
+        list_previous = []
+        list_next = []
+        constraint = ''
+        for i in range(0,11):
+            if (str(line[i]).isalpha()) & (i < start_pos):
+                constraint += str(line[i])
+            elif (not str(line[i]).isalpha()) & (i < start_pos):
+                constraint = ''
+            elif (str(line[i]).isalpha()) & (i > start_pos):
+                constraint += str(line[i])
+            elif i == start_pos:
+                constraint += letter
+            else:
+                break
+
+        regex_start = '(.)' + constraint.upper()
+        regex_end = constraint.upper() +'(.)'
+        q_words = Words.objects.filter(Word_name__contains=constraint.upper()).values('Word_name')
+        for word in q_words:
+            for ans in re.findall(regex_start,word['Word_name']):
+                list_previous.append(ans)
+            for ans in re.findall(regex_end,word['Word_name']):
+                list_next.append(ans)
+
+        return list(set(list_previous)), list(set(list_next))
+
     def update_constraints(self,new_word,start_row,start_col,is_vertical):
         new_word = new_word.upper()
         regex = '(.)' + new_word.upper()
@@ -99,70 +142,49 @@ class Scrabble:
         ends = list(set([re.findall(regex,word['Word_name'])[0] for word in Words.objects.filter(Word_name__regex=new_word).values('Word_name') if re.search(regex,word['Word_name'])]))
         if is_vertical:
             if start_row > 0:
-                if str(self.scrabble_constraints[start_row-1][start_col]) == '.':
-                    if bool(starts):
-                        self.scrabble_constraints[start_row-1][start_col] = starts
-                    else:
-                        self.scrabble_constraints[start_row-1][start_col] = '0'
-                elif not str(self.scrabble_board[start_row-1][start_col]).isalpha():
-                    existing = self.scrabble_constraints[start_row-1][start_col]
-                    new_constraint = list(set(existing).intersection(starts))
-                    if bool(new_constraint):
-                        self.scrabble_constraints[start_row-1][start_col] = new_constraint
-                    else:
-                        self.scrabble_constraints[start_row-1][start_col] = '0'
+                self.update_constraint_cell(start_row-1, start_col, starts)
             if start_row+len(new_word) < 11:
-                if str(self.scrabble_constraints[start_row+len(new_word)][start_col]) == '.':
-                    if bool(ends):
-                        self.scrabble_constraints[start_row+len(new_word)][start_col] = ends
-                    else:
-                        self.scrabble_constraints[start_row+len(new_word)][start_col] = '0'
-                elif not str(self.scrabble_board[start_row+len(new_word)][start_col]).isalpha():
-                    existing = self.scrabble_constraints[start_row+len(new_word)][start_col]
-                    new_constraint = list(set(existing).intersection(ends))
-                    if bool(new_constraint):
-                        self.scrabble_constraints[start_row+len(new_word)][start_col] = new_constraint
-                    else:
-                        self.scrabble_constraints[start_row+len(new_word)][start_col] = '0'
+                self.update_constraint_cell(start_row+len(new_word),start_col,ends)
         else:
             if start_col > 0:
-                if str(self.scrabble_constraints[start_row][start_col-1]) == '.':
-                    if bool(starts):
-                        self.scrabble_constraints[start_row][start_col-1] = starts
-                    else:
-                        self.scrabble_constraints[start_row][start_col-1] = '0'
-                elif not str(self.scrabble_board[start_row][start_col-1]).isalpha():
-                    existing = self.scrabble_constraints[start_row][start_col-1]
-                    new_constraint = list(set(existing).intersection(starts))
-                    if bool(new_constraint):
-                        self.scrabble_constraints[start_row][start_col-1] = new_constraint
-                    else:
-                        self.scrabble_constraints[start_row][start_col-1] = '0'
+                self.update_constraint_cell(start_row,start_col-1,starts)
             if start_col+len(new_word) < 11:
-                if str(self.scrabble_constraints[start_row][start_col+len(new_word)]) == '.':
-                    if bool(ends):
-                        self.scrabble_constraints[start_row][start_col+len(new_word)] = ends
-                    else:
-                        self.scrabble_constraints[start_row][start_col+len(new_word)] = '0'
-                elif not str(self.scrabble_board[start_row][start_col+len(new_word)]).isalpha():
-                    existing = self.scrabble_constraints[start_row][start_col+len(new_word)]
-                    new_constraint = list(set(existing).intersection(ends))
-                    if bool(new_constraint):
-                        self.scrabble_constraints[start_row][start_col+len(new_word)] = list(set(existing).intersection(ends))
-                    else:
-                        self.scrabble_constraints[start_row][start_col+len(new_word)] = '0'
+                self.update_constraint_cell(start_row,start_col+len(new_word),ends)
+        for k,v in enumerate(new_word):
+            if is_vertical:
+                if (start_col > 0) | (start_col+1 < 11):
+                    list_previous, list_next = self.get_list_previous_next_letters(self.scrabble_board[start_row+k][:],start_col,v)
+                if start_col > 0:
+                    self.update_constraint_cell(start_row+k, start_col-1, list_previous)
+                if start_col+1 < 11:
+                    self.update_constraint_cell(start_row+k,start_col+1,list_next)
+            else:
+                if (start_col > 0) | (start_col+1 < 11):
+                    list_previous, list_next = self.get_list_previous_next_letters([self.scrabble_board[i][start_col+k] for i in range(0,11)],start_col,v)
+                if start_row + 1 < 11:
+                    self.update_constraint_cell(start_row+1,start_col+k,list_next)
+                if start_row > 0:
+                    self.update_constraint_cell(start_row-1,start_col+k,list_previous)
 
     def check_character(self,line, letter, letter_pos):
         i=1
         ans = letter
-        while str(line[letter_pos-i]).isalpha():
-            ans += str(line[letter_pos-i])
-            i += 1
-        ans = ans[::-1]
+        if letter_pos > 0:
+            while str(line[letter_pos-i]).isalpha():
+                ans += str(line[letter_pos-i])
+                if letter_pos-i > 0:
+                    i += 1
+                else:
+                    break
+            ans = ans[::-1]
         i=1
-        while str(line[letter_pos+i]).isalpha():
-            ans += str(line[letter_pos+i])
-            i += 1
+        if letter_pos+i < 10:
+            while str(line[letter_pos+i]).isalpha():
+                ans += str(line[letter_pos+i])
+                if letter_pos+i < 10:
+                    i += 1
+                else:
+                    break
         return Words.objects.filter(Word_name=ans).exists()
 
     def is_word_location_valid(self,index,start_pos,is_vertical,word):
@@ -173,56 +195,59 @@ class Scrabble:
             if start_pos+len(word) < 11:
                 if str(self.scrabble_board[start_pos+len(word)][index]).isalpha():
                     return False
-            for i, v in enumerate(word):
-                if (start_pos > 0) & (index>0):
-                    if str(self.scrabble_constraints[start_pos + i][index -1 ]) != '.':
+
+            for k, v in enumerate(word):
+                if self.scrabble_board[start_pos + k][index] == v:
+                    continue
+                if (start_pos+k < 11) & (index >0):
+                    if str(self.scrabble_constraints[start_pos + k][index -1]) != '.':
                         # there is a constraint
-                        if str(self.scrabble_board[start_pos + i][index -1 ]).isalpha():
-                            # constraint is existing letter
-                            if not self.check_character(self.scrabble_board[start_pos +i ][:],v,index):
+                        if str(self.scrabble_board[start_pos + k][index -1 ]).isalpha():
+                            # constraint is existing letter So I check whether there is a double word
+                            if not self.check_character(self.scrabble_board[start_pos + k ][:],v,index):
                                 return False
-                        else:
-                            # constraint is restricted list of values
-                            if not v in self.scrabble_constraints[start_pos + i][index -1 ]:
-                                return False
-                if (start_pos+len(word) < 11) & (index+1) < 11:
-                    if str(self.scrabble_constraints[start_pos + i][index + 1]) != '.':
-                        if str(self.scrabble_constraints[start_pos + i][index + 1]).isalpha():
-                            if not self.check_character(self.scrabble_board[start_pos +i ][:],v,index):
-                                return False
-                        else:
-                            if not v in self.scrabble_constraints[start_pos + i][index + 1]:
+
+                if (start_pos+k < 11) & (index+1 < 11):
+                    if str(self.scrabble_constraints[start_pos + k][index + 1]) != '.':
+                        # there is a constraint
+                        if str(self.scrabble_constraints[start_pos + k][index + 1]).isalpha():
+                            # constraint is existing letter So I check whether there is a double word
+                            if not self.check_character(self.scrabble_board[start_pos + k ][:],v,index):
                                 return False
         else:
-            if (start_pos > 0) & (index>0):
+            if start_pos > 0:
                 if str(self.scrabble_board[index][start_pos-1]).isalpha():
+                    #print('Error: there is a letter before the word')
                     return False
-            if (start_pos+len(word) < 11) & (index+1) < 11:
+            if start_pos+len(word) < 11:
                 if str(self.scrabble_board[index][start_pos+len(word)]).isalpha():
+                    #print('Error: there is a letter after the word')
                     return False
-            for i,v in enumerate(word):
-                if start_pos > 0:
-                    if str(self.scrabble_constraints[index + 1 ][start_pos + i]) != '.':
-                        if str(self.scrabble_board[index + 1 ][start_pos + i]).isalpha():
-                            if not self.check_character([self.scrabble_board[j][start_pos+i] for j in range(0,11)],v,index):
+            for k,v in enumerate(word):
+                if self.scrabble_board[index][start_pos + k] == v:
+                    continue
+                if (start_pos+k < 11) & (index+1 < 11):
+                    if str(self.scrabble_constraints[index + 1 ][start_pos + k]) != '.':
+                        # there is a constraint
+                        if str(self.scrabble_board[index + 1 ][start_pos + k]).isalpha():
+                            # constraint is existing letter So I check whether there is a double word
+                            if not self.check_character([self.scrabble_board[j][start_pos+k] for j in range(0,11)],v,index):
                                 return False
-                        else:
-                            if not v in self.scrabble_constraints[index + 1][start_pos + i]:
+
+                if (start_pos+k < 11) & (index >0):
+                    if str(self.scrabble_constraints[index - 1][start_pos + k]) != '.':
+                        # there is a constraint
+                        if str(self.scrabble_constraints[index - 1][start_pos + k]).isalpha():
+                            # constraint is existing letter So I check whether there is a double word
+                            if not self.check_character([self.scrabble_board[j][start_pos+k] for j in range(0,11)],v,index):
                                 return False
-                if start_pos+len(word) < 11:
-                    if str(self.scrabble_constraints[index - 1][start_pos + i]) != '.':
-                        if str(self.scrabble_constraints[index - 1][start_pos + i]).isalpha():
-                            if not self.check_character([self.scrabble_board[j][start_pos+i] for j in range(0,11)],v,index):
-                                return False
-                        else:
-                            if not v in self.scrabble_constraints[index - 1][start_pos + i]:
-                                return False
+
         return True
 
     def get_best_words_line(self,index,is_vertical,df_words):
         ans = []
         for start_pos in range(0,11-1):
-            for word_len in range(2,11-start_pos):
+            for word_len in list(set(df_words[df_words['length']<(12-start_pos)]['length'].values)):
                 if is_vertical:
                     if any([str(w).isalpha() for w in [self.scrabble_board[i][index] for i in range(start_pos,start_pos+word_len)]]):
                         line_letters = list(set([str(w) for w in [self.scrabble_board[i][index] for i in range(start_pos,start_pos+word_len)] if str(w).isalpha()]))
@@ -231,11 +256,22 @@ class Scrabble:
                             if re.search(regex,str(word)):
                                 if self.is_word_location_valid(index,start_pos,is_vertical,word):
                                     ans.append((word,self.get_word_score(index,True,word, start_pos)))
-
+                    elif any([str(w) != '.' for w in [self.scrabble_constraints[i][index] for i in range(start_pos,start_pos+word_len)]]):
+                        for word in df_words[(df_words['length'] == word_len) & (df_words['missing'] == '')]['words'].values:
+                            regex = ''.join([str(w) for w in [self.scrabble_constraints[i][index] for i in range(start_pos,start_pos+word_len)]])
+                            if re.search(regex,str(word)):
+                                if self.is_word_location_valid(index,start_pos,is_vertical,word):
+                                    ans.append((word,self.get_word_score(index,True,word, start_pos)))
                 else:
                     if any([str(w).isalpha() for w in self.scrabble_board[index][start_pos:start_pos+word_len]]):
                         line_letters = list(set([str(w) for w in self.scrabble_board[index][start_pos:start_pos+word_len] if str(w).isalpha()]))
                         for word in df_words[(df_words['length'] == word_len) & (df_words['missing'].str.contains('['+','.join(line_letters)+']', regex=True, na=False))]['words'].values:
+                            regex = ''.join([str(w) for w in self.scrabble_constraints[index][start_pos:start_pos+word_len]])
+                            if re.search(regex,word):
+                                if self.is_word_location_valid(index,start_pos,is_vertical,word):
+                                    ans.append((word,self.get_word_score(index,False,word, start_pos)))
+                    elif any([str(w) != '.' for w in self.scrabble_constraints[index][start_pos:start_pos+word_len]]):
+                        for word in df_words[(df_words['length'] == word_len) & (df_words['missing'] == '')]['words'].values:
                             regex = ''.join([str(w) for w in self.scrabble_constraints[index][start_pos:start_pos+word_len]])
                             if re.search(regex,word):
                                 if self.is_word_location_valid(index,start_pos,is_vertical,word):
@@ -246,12 +282,12 @@ class Scrabble:
     def get_all_best_words(self,df_words):
         ans = []
         for index in range(0,11):
-            if any([str(w).isalpha() for w in self.scrabble_board[:][index]]):
+            if any([str(w) != '.' for w in self.scrabble_constraints[:][index]]):
                 for word, score in self.get_best_words_line(index,True,df_words):
                     ans.append(('C'+str(index),word,score))
-            if any([str(w).isalpha() for w in self.scrabble_board[index][:]]):
+            if any([str(w) != '.' for w in self.scrabble_constraints[index][:]]):
                 for word, score in self.get_best_words_line(index,False,df_words):
-                    ans.append(('C'+str(index),word,score))
+                    ans.append(('R'+str(index),word,score))
         return list(sorted(ans,key=lambda x: x[2],reverse=True))
 
     def get_word_score(self, index, is_vertical, word, start_pos):
@@ -263,20 +299,20 @@ class Scrabble:
             line = [self.scrabble_board[i][index] for i in range(0,11)]
         else:
             line = self.scrabble_board[index][:]
-        for i,v in enumerate(word):
-            if (v != line[i+start_pos])  & (str(line[i+start_pos]).isalpha()):
+        for k,v in enumerate(word):
+            if (v != line[k+start_pos])  & (str(line[k+start_pos]).isalpha()):
                 return -1
-            elif line[i+start_pos] == MOT_TRIPLE:
+            elif line[k+start_pos] == MOT_TRIPLE:
                 score += DICT_LETTER[v]
                 triple += 1
-            elif line[i+start_pos] == MOT_DOUBLE:
+            elif line[k+start_pos] == MOT_DOUBLE:
                 score += DICT_LETTER[v]
                 double += 1
-            elif line[i+start_pos] == LETTRE_TRIPLE:
+            elif line[k+start_pos] == LETTRE_TRIPLE:
                 score += DICT_LETTER[v] * 3
-            elif line[i+start_pos] == LETTRE_DOUBLE:
+            elif line[k+start_pos] == LETTRE_DOUBLE:
                 score += DICT_LETTER[v] * 2
-            elif line[i+start_pos] == v:
+            elif line[k+start_pos] == v:
                 existing_letters += 1
                 score += DICT_LETTER[v]
             else:
@@ -289,22 +325,31 @@ class Scrabble:
             score += 35
         return score
 
+    def print_board(self):
+        print('board')
+        for i in range(0,11):
+            print(' '.join([str(self.scrabble_board[i][j]) for j in range(0,11)]))
+
+    def print_constraints(self):
+        print('constraints: ')
+        for i in range(0,11):
+            print(' '.join([str(self.scrabble_constraints[i][j]) for j in range(0,11)]))
+
+    def print_best_words_order(self,list_letters):
+        letters, free_letter = get_clean_list_letters(list_letters.upper())
+        df = get_search_result(letters, free_letter)
+        print('Solution: ')
+        for solution in scrabble.get_all_best_words(df[['length','words','missing']]):
+            print(solution)
+
 
 scrabble = Scrabble()
-scrabble.enter_new_word('cotes',5,1,False)#=0
-scrabble.enter_new_word('fohn',4,2,True)
-scrabble.enter_new_word('jodles',0,5,True)
-scrabble.enter_new_word('parjure',0,2,False)
-scrabble.enter_new_word('mis',8,0,False)
+scrabble.enter_new_word('fetez',5,1,False)
+scrabble.enter_new_word('kyrie',1,2,True)
+scrabble.enter_new_word('abyssal',2,0,False)
+scrabble.print_board()
 
-print(scrabble.create_scrabble_board)
+scrabble.print_best_words_order('olgapue')
 
-list_letters = 'qbetksa'
-letters, free_letter = get_clean_list_letters(list_letters.upper())
-df = get_search_result(letters, free_letter)
-dict_length_words = df.set_index('length')['words'].groupby('length').apply(list).to_dict()
-
-for solution in scrabble.get_all_best_words(df[['length','words','missing']]):
-    print(solution)
 
 #! exec(open(r'.\scrabble_analytics\cmd_scrabble_game\game_v2.py').read())

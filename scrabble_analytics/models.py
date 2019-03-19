@@ -8,16 +8,15 @@ class WordsSet(models.Model):
 
 class Words(models.Model):
     Word_name = models.CharField(max_length = 20)
-    Length = models.IntegerField()
     Score = models.IntegerField()
     Word_set = models.ForeignKey(WordsSet, on_delete=models.CASCADE)
     Word_name_len = models.PositiveIntegerField()
 
     def __str__(self):
-        return str(self.Word_name) + ' Length: ' + str(self.Length) + ' Score: ' + str(self.Score)
+        return str(self.Word_name) + ' Length: ' + str(self.Word_name_len) + ' Score: ' + str(self.Score)
 
     def __unicode__(self): #used fr python2
-        return str(self.Word_name) + ' Length: ' + str(self.Length) + ' Score: ' + str(self.Score)
+        return str(self.Word_name) + ' Length: ' + str(self.Word_name_len) + ' Score: ' + str(self.Score)
 
     def save(self, *args, **kwargs):
         if self.Length is None:
@@ -30,7 +29,7 @@ class Words(models.Model):
 class SavedSearchParameters(models.Model):
     Letters_list = models.CharField(max_length = 20)
     Created_date = models.DateTimeField(auto_now_add=True)
-    
+
     def __str__(self):
         return str(self.Letters_list) + ' Created on: ' + str(self.Created_date)
 
