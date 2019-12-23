@@ -2,23 +2,17 @@ import numpy as np
 from scrabble_analytics.utils import create_scrabble_board, enter_new_word, get_letters_from_player, get_free_space, print_scrabble, get_line_constrainsts, get_list_words_associated_score, print_solution
 
 scrabble = create_scrabble_board()
-scrabble = enter_new_word(scrabble,'bravee',5,1,0)
-scrabble = enter_new_word(scrabble,'aciera',1,2,1)
-scrabble = enter_new_word(scrabble,'oriya',7,0,0)
-scrabble = enter_new_word(scrabble,'wad',1,1,0)
-scrabble = enter_new_word(scrabble,'coxales',2,2,0)
-scrabble = enter_new_word(scrabble,'zone',6,0,1)
-scrabble = enter_new_word(scrabble,'zone',6,0,1)
-scrabble = enter_new_word(scrabble,'sono',10,0,0)
-scrabble = enter_new_word(scrabble,'grill',9,3,0)
-scrabble = enter_new_word(scrabble,'hast',0,8,1)
-scrabble = enter_new_word(scrabble,'jas',1,7,0)
-scrabble = enter_new_word(scrabble,'teke',0,10,1)
+scrabble = enter_new_word(scrabble,'pawnee',2,2,1)
+scrabble = enter_new_word(scrabble,'anoxies',5,1,0)
+scrabble = enter_new_word(scrabble,'jas',3,7,1)
+scrabble = enter_new_word(scrabble,'tekes',0,8,1)
+
+
 
 
 print_scrabble(scrabble)
 
-player_letters = get_letters_from_player('qonjnso')
+player_letters = get_letters_from_player('rtueola')
 
 free_space = get_free_space(scrabble)
 list_possible_solutions = []

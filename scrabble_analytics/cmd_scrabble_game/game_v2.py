@@ -6,7 +6,6 @@ from scrabble_analytics.utils import get_clean_list_letters, get_search_result
 from scrabble_analytics.models import Words
 
 
-
 class Scrabble:
     def __init__(self):
         self.scrabble_board = self.create_scrabble_board()
@@ -338,18 +337,21 @@ class Scrabble:
     def print_best_words_order(self,list_letters):
         letters, free_letter = get_clean_list_letters(list_letters.upper())
         df = get_search_result(letters, free_letter)
-        print('Solution: ')
-        for solution in scrabble.get_all_best_words(df[['length','words','missing']]):
+        for solution in scrabble.get_all_best_words(df[['length','words','missing']])[:20]:
             print(solution)
 
 
 scrabble = Scrabble()
-scrabble.enter_new_word('fetez',5,1,False)
-scrabble.enter_new_word('kyrie',1,2,True)
-scrabble.enter_new_word('abyssal',2,0,False)
+scrabble.enter_new_word('test',5,4,False)
+scrabble.enter_new_word('fieront',3,5,True)
+scrabble.enter_new_word('kitsch',3,7,True)
+scrabble.enter_new_word('djinn',8,1,False)
+scrabble.enter_new_word('jeu',8,2,True)
+scrabble.enter_new_word('ays',8,8,True)
+scrabble.enter_new_word('epieux',5,10,True)
 scrabble.print_board()
 
-scrabble.print_best_words_order('olgapue')
+scrabble.print_best_words_order('lrgnlba')
 
 
 #! exec(open(r'.\scrabble_analytics\cmd_scrabble_game\game_v2.py').read())

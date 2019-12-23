@@ -19,8 +19,8 @@ class Words(models.Model):
         return str(self.Word_name) + ' Length: ' + str(self.Word_name_len) + ' Score: ' + str(self.Score)
 
     def save(self, *args, **kwargs):
-        if self.Length is None:
-            self.Length = len(self.Word_name)
+        if self.Word_name_len is None:
+            self.Word_name_len = len(self.Word_name)
         if self.Score is None:
             self.Score = get_score(self.Word_name)
         self.Word_name_len = len(self.Word_name)
